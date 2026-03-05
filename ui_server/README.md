@@ -4,7 +4,7 @@
 
 ## 启动
 
-在 `IMO25/` 目录执行：
+在仓库根目录（`math-research-assistant/`）执行：
 
 ```bash
 python ui_server/server.py

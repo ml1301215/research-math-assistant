@@ -1,8 +1,20 @@
-# IMO25 数学求解与验证系统
+# 数学研究小助手
+
+[中文](./README.md) | [English](./README.en.md)
 
 一个本地可运行的数学问题求解系统：使用单 Agent 流程完成「求解 -> 验证 -> 自我修正」，并通过 Web 界面实时查看求解器/验证器对话及最终 LaTeX 输出。
 
-## 主要能力
+## 效果展示
+
+### 网页界面示例
+
+![数学研究小助手网页界面](./ui-snap.png)
+
+### LaTeX 编译效果示例（1+1）
+
+- 编译结果 PDF：[`latex-demo.pdf`](./latex-demo.pdf)
+
+## 主要功能
 
 - 支持自定义 LLM API：`Base URL`、`Model`、`API Key`、`temperature`、`max_tokens`
 - 支持自定义系统提示词（默认自动回填为当前内置提示词，不需要从零编写）
@@ -28,7 +40,7 @@ pip install -r requirements.txt
 
 ### 2) 启动 Web 服务
 
-在 `IMO25/` 目录执行：
+在仓库根目录（`math-research-assistant/`）执行：
 
 ```bash
 python ui_server/server.py
@@ -53,7 +65,7 @@ python ui_server/server.py
 - API Key 输入框留空：保持当前已保存密钥不变
 - 勾选“清空已保存 API Key”：删除已保存密钥
 
-### 4) 配置提示词
+### 4) 配置提示词（可选）
 
 进入「提示词设置」：
 
@@ -75,15 +87,3 @@ python code/agent.py "<problem_file>" --log "<log_file>" --memory "<memory_file>
 - `--memory`：记忆文件路径
 - `--config`：覆盖默认 API/提示词配置
 - `--max_runs`：总运行轮次
-
-## 安全与版本控制建议
-
-- 不要提交真实 API Key
-- 不要提交运行产物（`ui_server/runs/`）
-- 本项目 `.gitignore` 已默认忽略常见敏感文件与运行目录
-
-## 常见问题
-
-- 运行中长时间无输出：通常是模型响应耗时，可查看状态文本和 `ui_server/runs/<run_id>/agent.log`
-- 最终区为空：检查日志中是否有完整 LaTeX 文档；失败场景会尽量回退到最后一轮求解器输出
-- token 显示为 0：通常是网关响应未返回 `usage` 或返回结构不一致
