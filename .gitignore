@@ -201,3 +201,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data
+problems/
+run_log*/
+
+# Local instructions and notes
+models_name_useful.txt
+prompts
+../prompt_for_open_questions
+../tempt
+prompt_for_open_questions
+tempt
+
+# UI server runtime data
+ui_server/settings.json
+ui_server/runs/

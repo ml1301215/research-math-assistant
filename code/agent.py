@@ -32,11 +32,47 @@ import argparse
 import logging
 
 # --- CONFIGURATION ---
-# The model to use. "gemini-1.5-flash" is fast and capable.
-#MODEL_NAME = "gemini-1.5-flash-latest" 
-MODEL_NAME = "gemini-2.5-pro" 
-# Use the Generative Language API endpoint, which is simpler for API key auth
-API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent"
+MODEL_NAME = "google/gemini-3-pro-preview"
+BASE_URL = "https://llm-api-jpe.dou.chat"
+API_URL = f"{BASE_URL}/v1/chat/completions"
+TEMPERATURE = 0.1
+MAX_TOKENS = 24576
+
+def load_config(config_path):
+    """Load config from JSON file, overriding global defaults."""
+    global MODEL_NAME, BASE_URL, API_URL, TEMPERATURE, MAX_TOKENS
+    global step1_prompt, self_improvement_prompt, correction_prompt
+    global verification_system_prompt, verification_remider, check_verification_prompt
+
+    with open(config_path, 'r', encoding='utf-8') as f:
+        cfg = json.load(f)
+
+    api_cfg = cfg.get("api", {})
+    if api_cfg.get("base_url"):
+        BASE_URL = api_cfg["base_url"]
+        API_URL = f"{BASE_URL}/v1/chat/completions"
+    if api_cfg.get("model_name"):
+        MODEL_NAME = api_cfg["model_name"]
+    if api_cfg.get("api_key"):
+        os.environ["OPENAI_API_KEY"] = api_cfg["api_key"]
+    if api_cfg.get("temperature") is not None:
+        TEMPERATURE = float(api_cfg["temperature"])
+    if api_cfg.get("max_tokens") is not None:
+        MAX_TOKENS = int(api_cfg["max_tokens"])
+
+    prompts_cfg = cfg.get("prompts", {})
+    if prompts_cfg.get("step1_prompt") is not None:
+        step1_prompt = prompts_cfg["step1_prompt"]
+    if prompts_cfg.get("self_improvement_prompt") is not None:
+        self_improvement_prompt = prompts_cfg["self_improvement_prompt"]
+    if prompts_cfg.get("correction_prompt") is not None:
+        correction_prompt = prompts_cfg["correction_prompt"]
+    if prompts_cfg.get("verification_system_prompt") is not None:
+        verification_system_prompt = prompts_cfg["verification_system_prompt"]
+    if prompts_cfg.get("verification_remider") is not None:
+        verification_remider = prompts_cfg["verification_remider"]
+    if prompts_cfg.get("check_verification_prompt") is not None:
+        check_verification_prompt = prompts_cfg["check_verification_prompt"]
 
 # Global variables for logging
 _log_file = None
@@ -59,9 +95,14 @@ def log_print(*args, **kwargs):
     original_print(message)
     
     # Also write to log file if specified
-    if _log_file is not None:
+    if _log_file is not None and not _log_file.closed:
         _log_file.write(message + '\n')
         _log_file.flush()  # Ensure immediate writing
+        # Force OS-level flush so tailing tools see updates promptly on Windows
+        try:
+            os.fsync(_log_file.fileno())
+        except (OSError, ValueError):
+            pass
 
 # Replace the built-in print function
 print = log_print
@@ -71,7 +112,8 @@ def set_log_file(log_file_path):
     global _log_file
     if log_file_path:
         try:
-            _log_file = open(log_file_path, 'w', encoding='utf-8')
+            # Line-buffered to improve real-time log visibility
+            _log_file = open(log_file_path, 'w', encoding='utf-8', buffering=1)
             return True
         except Exception as e:
             print(f"Error opening log file {log_file_path}: {e}")
@@ -124,56 +166,72 @@ def load_memory(memory_file):
 step1_prompt = """
 ### Core Instructions ###
 
-*   **Rigor is Paramount:** Your primary goal is to produce a complete and rigorously justified solution. Every step in your solution must be logically sound and clearly explained. A correct final answer derived from flawed or incomplete reasoning is considered a failure.
-*   **Honesty About Completeness:** If you cannot find a complete solution, you must **not** guess or create a solution that appears correct but contains hidden flaws or justification gaps. Instead, you should present only significant partial results that you can rigorously prove. A partial result is considered significant if it represents a substantial advancement toward a full solution. Examples include:
-    *   Proving a key lemma.
-    *   Fully resolving one or more cases within a logically sound case-based proof.
-    *   Establishing a critical property of the mathematical objects in the problem.
-    *   For an optimization problem, proving an upper or lower bound without proving that this bound is achievable.
+*   **Target:** Solve research-level mathematical problem.
+*   **Rigor is Paramount:** Your primary goal is to solve the problem and produce new mathematics. 
+*   **Honesty About Completeness:** If you cannot find a complete solution(hope not), you must **explicitly state that no complete solution is found**. A partial result is significant if it represents a substantial advancement toward a full solution. Examples include:
+    *   Proving a new key lemma.
+    *   Establishing a critical new property of the mathematical objects in the problem.
+    *   Proving a new result about the problem.
 *   **Use TeX for All Mathematics:** All mathematical variables, expressions, and relations must be enclosed in TeX delimiters (e.g., `Let $n$ be an integer.`).
 
 ### Output Format ###
 
-Your response MUST be structured into the following sections, in this exact order.
+Your response MUST be a complete LaTeX document that compiles in Overleaf and matches this exact structure.
 
-**1. Summary**
+**Required LaTeX Skeleton**
 
-Provide a concise overview of your findings. This section must contain two parts:
+*   Start with `\\documentclass[reqno]{amsart}`.
+*   Use this package block (same order):
+    `\\usepackage{amsmath, amsthm, amsfonts, amssymb, mathrsfs, hyperref}`
+    `\\usepackage[utf8]{inputenc}`
+    `\\usepackage[T1]{fontenc}`
+*   Define theorem environments: `theorem, lemma, proposition, corollary, definition, remark, example`.
+*   Include `\\title{...}`, `\\author{AI Researcher}`, `\\date{\\today}`.
+*   Use `\\begin{document}` ... `\\end{document}`, and call `\\maketitle` after the abstract.
 
-*   **a. Verdict:** State clearly whether you have found a complete solution or a partial solution.
-    *   **For a complete solution:** State the final answer, e.g., "I have successfully solved the problem. The final answer is..."
-    *   **For a partial solution:** State the main rigorous conclusion(s) you were able to prove, e.g., "I have not found a complete solution, but I have rigorously proven that..."
-*   **b. Method Sketch:** Present a high-level, conceptual outline of your solution. This sketch should allow an expert to understand the logical flow of your argument without reading the full detail. It should include:
-    *   A narrative of your overall strategy.
-    *   The full and precise mathematical statements of any key lemmas or major intermediate results.
-    *   If applicable, describe any key constructions or case splits that form the backbone of your argument.
+**Document Sections**
 
-**2. Detailed Solution**
+*   `\\begin{abstract} ... \\end{abstract}`: Summary (verdict + method sketch).
+*   `\\section{Problem}`: State the problem in LaTeX.
+*   `\\section{Solution}`: Full, step-by-step rigorous proof or partial results.
+*   If a complete solution is not found, state it clearly in the Solution section. 
+*   End with `\\begin{thebibliography}{99}` ... `\\end{thebibliography}`.
 
-Present the full, step-by-step mathematical proof. Each step must be logically justified and clearly explained. The level of detail should be sufficient for an expert to verify the correctness of your reasoning without needing to fill in any gaps. This section must contain ONLY the complete, rigorous proof, free of any internal commentary, alternative approaches, or failed attempts.
+**Citations and References**
+
+*   Every formula or theorem must be accompanied by a citation using `\\cite{...}` with the corresponding bibitem if necessary.
+*   Each bibitem should include enough bibliographic detail and (if available) a URL.
 
 ### Self-Correction Instruction ###
 
-Before finalizing your output, carefully review your "Method Sketch" and "Detailed Solution" to ensure they are clean, rigorous, and strictly adhere to all instructions provided above. Verify that every statement contributes directly to the final, coherent mathematical argument.
+Before finalizing your output, carefully review your Abstract, Solution, and References to ensure they are clean, rigorous, and strictly adhere to all instructions provided above. Verify that every statement contributes directly to the final, coherent mathematical argument and that any incompleteness is explicitly stated. Additionally, ensure that all references are accurate and relevant:
+*   Verify that each reference URL is valid and points to a reputable mathematical resource.
+*   Must verify that the propositions used are exactly the same as those in the corresponding cited application literature.
+*   Check that important formulas and theorems are properly referenced with appropriate sources.
 
 """
 
 self_improvement_prompt = """
-You have an opportunity to improve your solution. Please review your solution carefully. Correct errors and fill justification gaps if any. Your second round of output should strictly follow the instructions in the system prompt.
+You have an opportunity to improve your solution. Please review your solution carefully. Correct errors and fill justification gaps if any. If a complete proof is not found, continue to explore deeper towards the solution. Your second round of output should strictly follow the instructions in the system prompt.
 """
 
 check_verification_prompt = """
 Can you carefully review each item in your list of findings? Are they valid or overly strict? An expert grader must be able to distinguish between a genuine flaw and a concise argument that is nonetheless sound, and to correct their own assessment when necessary.
 
-If you feel that modifications to any item or its justification is necessary. Please produce a new list. In your final output, please directly start with **Summary** (no need to justify the new list).
+Additionally, please verify the accuracy and relevance of all references cited in your verification:
+*   Check that each reference URL is valid and points to a reputable mathematical resource
+*   Ensure that the cited references actually support the mathematical concepts or results mentioned
+*   Must verify that the propositions used are exactly the same as those in the corresponding cited application literature.
+
+ If you feel that modifications to any item or its justification is necessary, or if you find issues with the references, please produce a new list and updated references. In your final output, please directly start with **Summary** (no need to justify the new list).
 """
 
 correction_prompt = """
-Below is the bug report. If you agree with certain item in it, can you improve your solution so that it is complete and rigorous? Note that the evaluator who generates the bug report can misunderstand your solution and thus make mistakes. If you do not agree with certain item in the bug report, please add some detailed explanations to avoid such misunderstanding. Your new solution should strictly follow the instructions in the system prompt.
+Below is the bug report. If you agree with certain item in it, improve your solution towards the solution of the problem. Note that the evaluator who generates the bug report can misunderstand your solution and thus make mistakes. If you do not agree with certain item in the bug report, please add detailed explanations to avoid such misunderstanding. Your new solution should strictly follow the instructions in the system prompt.
 """
 
 verification_system_prompt = """
-You are an expert mathematician and a meticulous grader for an International Mathematical Olympiad (IMO) level exam. Your primary task is to rigorously verify the provided mathematical solution. A solution is to be judged correct **only if every step is rigorously justified.** A solution that arrives at a correct final answer through flawed reasoning, educated guesses, or with gaps in its arguments must be flagged as incorrect or incomplete.
+You are an expert mathematician. Your primary task is to rigorously verify the provided mathematical work. A solution is to be judged correct **only if every claimed result is rigorously justified. And the solution must contain some new mathematics.(Not being proved in any references)** A solution that arrives at a correct final answer through flawed reasoning, educated guesses, or with gaps in its arguments must be flagged as incorrect or incomplete.
 
 ### Instructions ###
 
@@ -203,18 +261,17 @@ Your response MUST be structured into two main sections: a **Summary** followed 
 
 *   **a. Summary**
     This section MUST be at the very beginning of your response. It must contain two components:
-    *   **Final Verdict**: A single, clear sentence declaring the overall validity of the solution. For example: "The solution is correct," "The solution contains a Critical Error and is therefore invalid," or "The solution's approach is viable but contains several Justification Gaps."
+    *   **Final Verdict**: A single, clear sentence declaring the overall validity of the work. For example: "The solution is correct," "The solution contains a Critical Error and is therefore invalid," or "The work provides correct partial results but no complete proof."
     *   **List of Findings**: A bulleted list that summarizes **every** issue you discovered. For each finding, you must provide:
         *   **Location:** A direct quote of the key phrase or equation where the issue occurs.
         *   **Issue:** A brief description of the problem and its classification (**Critical Error** or **Justification Gap**).
 
 *   **b. Detailed Verification Log**
-    Following the summary, provide the full, step-by-step verification log as defined in the Core Instructions. When you refer to a specific part of the solution, **quote the relevant text** to make your reference clear before providing your detailed analysis of that part.
-
+    Following the summary, provide the full, step-by-step verification log as defined in the Core Instructions. When you refer to a specific part of the solution, **quote the relevant text** to make your reference clear before providing your detailed analysis of that part. 
 **Example of the Required Summary Format**
 *This is a generic example to illustrate the required format. Your findings must be based on the actual solution provided below.*
 
-**Final Verdict:** The solution is **invalid** because it contains a Critical Error.
+**Final Verdict:** The solution is **invalid** because it only provides  partial results but no complete proof towards the solution of the problem.
 
 **List of Findings:**
 *   **Location:** "By interchanging the limit and the integral, we get..."
@@ -222,25 +279,27 @@ Your response MUST be structured into two main sections: a **Summary** followed 
 *   **Location:** "From $A > B$ and $C > D$, it follows that $A-C > B-D$"
     *   **Issue:** Critical Error - This step is a logical fallacy. Subtracting inequalities in this manner is not a valid mathematical operation.
 
-"""
+**Detailed Verification Log:**
+[Step-by-step analysis would go here...]
 
+
+"""
 
 verification_remider = """
 ### Verification Task Reminder ###
 
-Your task is to act as an IMO grader. Now, generate the **summary** and the **step-by-step verification log** for the solution above. In your log, justify each correct step and explain in detail any errors or justification gaps you find, as specified in the instructions above.
+Your task is to act as a research-level problem referee. The solution above is provided in LaTeX paper format. Focus on the mathematical content in the document body, especially the Solution section. Now, generate the **summary** and the **step-by-step verification log** for the solution above. In your log, justify each correct step and explain in detail any errors or justification gaps you find, as specified in the instructions above. If the work is partial, you should indicate the limitations of the solution and the parts that are not proved.
 """
 
 def get_api_key():
     """
-    Retrieves the Google API key from environment variables.
+    Retrieves the API key from environment variables.
     Exits if the key is not found.
     """
-
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        print("Error: GOOGLE_API_KEY environment variable not set.")
-        print("Please set the variable, e.g., 'export GOOGLE_API_KEY=\"your_api_key\"'")
+        print("Error: OPENAI_API_KEY environment variable not set.")
+        print("Please set the variable, e.g., 'export OPENAI_API_KEY=\"your_api_key\"'")
         sys.exit(1)
     return api_key
 
@@ -261,60 +320,102 @@ def read_file_content(filepath):
 
 def build_request_payload(system_prompt, question_prompt, other_prompts=None):
     """
-    Builds the JSON payload for the Gemini API request, using the
-    recommended multi-turn format to include a system prompt.
+    Builds the JSON payload for the OpenAI compatible API request.
     """
-    payload = {
-        "systemInstruction": {
+    messages = []
+    
+    if system_prompt:
+        messages.append({
             "role": "system",
-            "parts": [
-            {
-                "text": system_prompt 
-            }
-            ]
-        },
-       "contents": [
-        {
-          "role": "user",
-          "parts": [{"text": question_prompt}]
-        }
-      ],
-      "generationConfig": {
-        "temperature": 0.1,
-        "topP": 1.0,
-        "thinkingConfig": { "thinkingBudget": 32768} 
-      },
-    }
+            "content": system_prompt
+        })
+    
+    messages.append({
+        "role": "user",
+        "content": question_prompt
+    })
 
     if other_prompts:
         for prompt in other_prompts:
-            payload["contents"].append({
+            messages.append({
                 "role": "user",
-                "parts": [{"text": prompt}]
+                "content": prompt
             })
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_TOKENS
+    }
 
     return payload
 
 def send_api_request(api_key, payload):
     """
-    Sends the request to the Gemini API and returns the response.
+    Sends the request to the OpenAI compatible API and returns the response.
     """
     headers = {
         "Content-Type": "application/json",
-        "X-goog-api-key": api_key # API key now in header!
+        "Authorization": f"Bearer {api_key}"
     }
     
-    #print("Sending request to Gemini API...")
+    print("Sending request to API...")
+    print(f"API URL: {API_URL}")
+    log_headers = headers.copy()
+    if "Authorization" in log_headers:
+        log_headers["Authorization"] = "Bearer ***"
+    print(f"Headers: {log_headers}")
+    print(f"Payload: {json.dumps(payload, indent=2)}")
+    
+    response = None
     try:
         response = requests.post(API_URL, headers=headers, data=json.dumps(payload))
+        print(f"Response status code: {response.status_code}")
+        print(f"Response text: {response.text}")
         response.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
-        return response.json()
+        response_json = response.json()
+
+        def _safe_int(v):
+            try:
+                return int(v or 0)
+            except (TypeError, ValueError):
+                return 0
+
+        def _find_usage(obj):
+            """Recursively find a usage-like dict in provider-specific response shapes."""
+            if isinstance(obj, dict):
+                has_any = any(k in obj for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
+                if has_any:
+                    return obj
+                for vv in obj.values():
+                    found = _find_usage(vv)
+                    if found is not None:
+                        return found
+            elif isinstance(obj, list):
+                for vv in obj:
+                    found = _find_usage(vv)
+                    if found is not None:
+                        return found
+            return None
+
+        usage = _find_usage(response_json)
+        if usage is not None:
+            prompt_tokens = _safe_int(usage.get("prompt_tokens", 0))
+            completion_tokens = _safe_int(usage.get("completion_tokens", 0))
+            total_tokens = _safe_int(usage.get("total_tokens", 0))
+            if total_tokens == 0 and (prompt_tokens > 0 or completion_tokens > 0):
+                total_tokens = prompt_tokens + completion_tokens
+            print(f">>>>>>> TOKEN_USAGE: prompt={prompt_tokens} completion={completion_tokens} total={total_tokens}")
+        return response_json
+    except requests.exceptions.HTTPError as e:
+        print(f"Error during API request: {e}")
+        if response:
+            print(f"Response status code: {response.status_code}")
+            print(f"Raw API Response: {response.text}")
+        raise e
     except requests.exceptions.RequestException as e:
         print(f"Error during API request: {e}")
-        if response.status_code == 400:
-            print(f"Possible reason for 400: Model '{MODEL_NAME}' might not be available or URL is incorrect for your setup.")
-            print(f"Raw API Response (if available): {response.text}")
-        #sys.exit(1)
         raise e
 
 def extract_text_from_response(response_data):
@@ -323,13 +424,12 @@ def extract_text_from_response(response_data):
     Handles potential errors if the response format is unexpected.
     """
     try:
-        return response_data['candidates'][0]['content']['parts'][0]['text']
+        return response_data['choices'][0]['message']['content']
     except (KeyError, IndexError, TypeError) as e:
         print("Error: Could not extract text from the API response.")
         print(f"Reason: {e}")
         print("Full API Response:")
         print(json.dumps(response_data, indent=2))
-        #sys.exit(1)
         raise e 
 
 def extract_detailed_solution(solution, marker='Detailed Solution', after=True):
@@ -338,9 +438,23 @@ def extract_detailed_solution(solution, marker='Detailed Solution', after=True):
     Returns the substring after the marker, stripped of leading/trailing whitespace.
     If the marker is not found, returns an empty string.
     """
+    doc_start = solution.find("\\begin{document}")
+    doc_end = solution.find("\\end{document}")
+    if doc_start != -1 and doc_end != -1 and doc_end > doc_start:
+        return solution[doc_start + len("\\begin{document}") : doc_end].strip()
+
+    begin_marker = "<<BEGIN_DETAILED_SOLUTION>>"
+    end_marker = "<<END_DETAILED_SOLUTION>>"
+    begin_idx = solution.find(begin_marker)
+    if begin_idx != -1:
+        end_idx = solution.find(end_marker, begin_idx + len(begin_marker))
+        if end_idx != -1:
+            return solution[begin_idx + len(begin_marker) : end_idx].strip()
+        return solution[begin_idx + len(begin_marker):].strip()
+
     idx = solution.find(marker)
     if idx == -1:
-        return ''
+        return solution.strip()
     if(after):
         return solution[idx + len(marker):].strip()
     else:
@@ -380,7 +494,7 @@ def verify_solution(problem_statement, solution, verbose=True):
         print(">>>>>>> Verification results:")
         print(json.dumps(out, indent=4))
 
-    check_correctness = """Response in "yes" or "no". Is the following statement saying the solution is correct, or does not contain critical error or a major justification gap?""" \
+    check_correctness = """Response in "yes" or "no". Is the following statement saying the solution is correct and complete(not a partial solution)? """ \
             + "\n\n" + out 
     prompt = build_request_payload(system_prompt="", question_prompt=check_correctness)
     r = send_api_request(get_api_key(), prompt)
@@ -459,14 +573,14 @@ def init_explorations(problem_statement, verbose=True, other_prompts=[]):
     print(json.dumps(output1, indent=4))
 
     print(f">>>>>>> Self improvement start:")
-    p1["contents"].append(
-        {"role": "model",
-        "parts": [{"text": output1}]
+    p1["messages"].append(
+        {"role": "assistant",
+        "content": output1
         }
     )
-    p1["contents"].append(
+    p1["messages"].append(
         {"role": "user",
-        "parts": [{"text": self_improvement_prompt}]
+        "content": self_improvement_prompt
         }
     )
 
@@ -543,16 +657,15 @@ def agent(problem_statement, other_prompts=[], memory_file=None, resume_from_mem
                 other_prompts=other_prompts
             )
 
-            p1["contents"].append(
-                {"role": "model",
-                "parts": [{"text": solution}]
+            p1["messages"].append(
+                {"role": "assistant",
+                "content": solution
                 }
             )
             
-            p1["contents"].append(
+            p1["messages"].append(
                 {"role": "user",
-                "parts": [{"text": correction_prompt},
-                          {"text": verify}]
+                "content": f"{correction_prompt}\n\n{verify}"
                 }
             )
 
@@ -584,12 +697,12 @@ def agent(problem_statement, other_prompts=[], memory_file=None, resume_from_mem
         if memory_file:
             save_memory(memory_file, problem_statement, other_prompts, i, 30, solution, verify)
         
-        if(correct_count >= 5):
+        if(correct_count >= 2):
             print(">>>>>>> Correct solution found.")
             print(json.dumps(solution, indent=4))
             return solution
 
-        elif(error_count >= 10):
+        elif(error_count >= 5):
             print(">>>>>>> Failed in finding a correct solution.")
             # Save final state before returning
             if memory_file:
@@ -613,8 +726,13 @@ if __name__ == "__main__":
     parser.add_argument("--max_runs", '-m', type=int, default=10, help='Maximum number of runs (default: 10)')
     parser.add_argument('--memory', '-mem', type=str, help='Path to memory file for saving/loading state (optional)')
     parser.add_argument('--resume', '-r', action='store_true', help='Resume from memory file if provided')
+    parser.add_argument('--config', '-c', type=str, help='Path to JSON config file to override defaults')
     
     args = parser.parse_args()
+
+    if args.config:
+        load_config(args.config)
+        print(f"Config loaded from: {args.config}")
 
     max_runs = args.max_runs
     memory_file = args.memory
@@ -632,15 +750,15 @@ if __name__ == "__main__":
         if resume_from_memory:
             print("Resume mode: Will attempt to load from memory file")
 
-    # Set up logging if log file is specified
-    if args.log:
-        if not set_log_file(args.log):
-            sys.exit(1)
-        print(f"Logging to file: {args.log}")
-    
     problem_statement = read_file_content(args.problem_file)
 
     for i in range(max_runs):
+        # Reopen log file each run to fully overwrite
+        if args.log:
+            close_log_file()
+            if not set_log_file(args.log):
+                sys.exit(1)
+            print(f"Logging to file: {args.log}")
         print(f"\n\n>>>>>>>>>>>>>>>>>>>>>>>>>> Run {i} of {max_runs} ...")
         try:
             sol = agent(problem_statement, other_prompts, memory_file, resume_from_memory)

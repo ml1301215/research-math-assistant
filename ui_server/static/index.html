@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>数学科研小助手</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="brand-block">
+          <h1 data-i18n="app_title">数学科研小助手</h1>
+          <p data-i18n="app_subtitle">用于辅助解决研究中遇到的数学问题。</p>
+        </div>
+        <div class="header-actions">
+          <button id="langBtn" class="icon-btn" title="切换语言">
+            <span class="lang-label">中/EN</span>
+          </button>
+          <button id="settingsBtn" class="icon-btn" title="设置">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="card card-input">
+        <h2 data-i18n="input_problem">输入问题</h2>
+        <textarea id="question" rows="5" data-i18n-placeholder="input_placeholder" placeholder="在此输入题目（LaTeX 格式）..."></textarea>
+        <div class="actions">
+          <button id="runBtn" data-i18n="run_btn">一键运行</button>
+          <button id="stopBtn" class="stop-btn" style="display:none" data-i18n="stop_btn">中断</button>
+          <div id="status" class="status">
+            <span class="status-phase" data-i18n="status_idle">未运行</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <section class="card card-chat">
+          <h2 data-i18n="solve_verify_title">求解 &amp; 验证对话</h2>
+          <div id="chat" class="chat"></div>
+        </section>
+
+        <section class="card card-latex">
+          <h2 data-i18n="latex_output_title">最终LaTeX输出（可直接粘贴到Overleaf，编译为完整PDF）</h2>
+          <textarea id="latex-output" rows="14" readonly data-i18n-placeholder="latex_placeholder" placeholder="求解完成后，完整 LaTeX 文档将在此显示..."></textarea>
+          <div class="actions actions-compact">
+            <button id="copyBtn" style="display:none" data-i18n="copy_latex">复制 LaTeX</button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay" style="display:none">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 data-i18n="settings_title">设置</h2>
+          <button id="closeModal" class="icon-btn modal-close">&times;</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="tab-prompts" data-i18n="tab_prompts">提示词设置</button>
+          <button class="tab-btn" data-tab="tab-api" data-i18n="tab_api">模型 API 设置</button>
+        </div>
+
+        <!-- Tab 1: Prompts -->
+        <div id="tab-prompts" class="tab-content active">
+          <div class="accordion" data-key="step1_prompt">
+            <button class="accordion-toggle">
+              <span class="accordion-title">step1_prompt — <span data-i18n="prompt_step1_label">主求解提示</span></span>
+              <span class="accordion-arrow">&#9662;</span>
+            </button>
+            <div class="accordion-body">
+              <p class="prompt-desc" data-i18n="prompt_step1_desc">指导模型以 LaTeX 论文格式输出研究级数学问题的解答，包含严谨性、诚实性、LaTeX 文档结构、引用规范和自检要求。</p>
+              <textarea class="prompt-editor" data-prompt="step1_prompt" rows="10"></textarea>
+            </div>
+          </div>
+
+          <div class="accordion" data-key="self_improvement_prompt">
+            <button class="accordion-toggle">
+              <span class="accordion-title">self_improvement_prompt — <span data-i18n="prompt_self_improve_label">自改进提示</span></span>
+              <span class="accordion-arrow">&#9662;</span>
+            </button>
+            <div class="accordion-body">
+              <p class="prompt-desc" data-i18n="prompt_self_improve_desc">首轮输出后要求模型复查并修正错误、填补论证漏洞，继续探索更深入的解答。</p>
+              <textarea class="prompt-editor" data-prompt="self_improvement_prompt" rows="5"></textarea>
+            </div>
+          </div>
+
+          <div class="accordion" data-key="correction_prompt">
+            <button class="accordion-toggle">
+              <span class="accordion-title">correction_prompt — <span data-i18n="prompt_correction_label">修正提示</span></span>
+              <span class="accordion-arrow">&#9662;</span>
+            </button>
+            <div class="accordion-body">
+              <p class="prompt-desc" data-i18n="prompt_correction_desc">根据验证器的 bug report 改进解答，或对不认同的项给出详细解释以避免误解。</p>
+              <textarea class="prompt-editor" data-prompt="correction_prompt" rows="5"></textarea>
+            </div>
+          </div>
+
+          <div class="accordion" data-key="verification_system_prompt">
+            <button class="accordion-toggle">
+              <span class="accordion-title">verification_system_prompt — <span data-i18n="prompt_verify_sys_label">验证系统提示</span></span>
+              <span class="accordion-arrow">&#9662;</span>
+            </button>
+            <div class="accordion-body">
+              <p class="prompt-desc" data-i18n="prompt_verify_sys_desc">指导验证器作为数学专家严格验证解答，区分 Critical Error 与 Justification Gap，输出 Summary 和 Detailed Verification Log。</p>
+              <textarea class="prompt-editor" data-prompt="verification_system_prompt" rows="10"></textarea>
+            </div>
+          </div>
+
+          <div class="accordion" data-key="verification_remider">
+            <button class="accordion-toggle">
+              <span class="accordion-title">verification_remider — <span data-i18n="prompt_verify_reminder_label">验证任务提醒</span></span>
+              <span class="accordion-arrow">&#9662;</span>
+            </button>
+            <div class="accordion-body">
+              <p class="prompt-desc" data-i18n="prompt_verify_reminder_desc">提醒验证器关注 LaTeX 论文中的 Solution 部分，生成 summary 和 step-by-step verification log。</p>
+              <textarea class="prompt-editor" data-prompt="verification_remider" rows="5"></textarea>
+            </div>
+          </div>
+
+          <div class="accordion" data-key="check_verification_prompt">
+            <button class="accordion-toggle">
+              <span class="accordion-title">check_verification_prompt — <span data-i18n="prompt_check_verify_label">验证复核提示</span> <span class="badge-disabled" data-i18n="badge_disabled">当前未启用</span></span>
+              <span class="accordion-arrow">&#9662;</span>
+            </button>
+            <div class="accordion-body">
+              <p class="prompt-desc" data-i18n="prompt_check_verify_desc">让验证器复核 findings 是否过严，引用是否准确。此提示词在当前代码中被注释未启用。</p>
+              <textarea class="prompt-editor" data-prompt="check_verification_prompt" rows="5"></textarea>
+            </div>
+          </div>
+
+          <div class="prompt-actions">
+            <button id="savePrompts" class="btn-primary" data-i18n="save_prompts">保存提示词</button>
+            <button id="resetPrompts" class="btn-secondary" data-i18n="reset_prompts">恢复默认</button>
+            <span id="promptSaveStatus" class="save-status"></span>
+          </div>
+
+          <h3 class="section-title" data-i18n="pipeline_diagram">Pipeline 架构图</h3>
+          <div class="pipeline-img-wrap">
+            <img src="pipeline%E6%9E%B6%E6%9E%84%E5%9B%BE.png" alt="Pipeline 架构图" />
+          </div>
+        </div>
+
+        <!-- Tab 2: API Settings -->
+        <div id="tab-api" class="tab-content">
+          <div class="form-group">
+            <label for="apiBaseUrl">API Base URL</label>
+            <input id="apiBaseUrl" type="text" placeholder="https://llm-api-jpe.dou.chat" />
+          </div>
+          <div class="form-group">
+            <label for="apiModelName" data-i18n="model_name_label">Model Name</label>
+            <input id="apiModelName" type="text" placeholder="google/gemini-3-pro-preview" />
+          </div>
+          <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+            <p id="apiKeyHint" class="recommend-note" data-i18n="api_key_keep_hint">留空表示保持当前已保存密钥不变。</p>
+            <label class="checkbox-row">
+              <input id="clearApiKey" type="checkbox" />
+              <span data-i18n="clear_api_key">清空已保存 API Key</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="apiTemperature">Temperature</label>
+              <input id="apiTemperature" type="number" step="0.01" min="0" max="2" placeholder="0.1" />
+            </div>
+            <div class="form-group half">
+              <label for="apiMaxTokens">Max Tokens</label>
+              <input id="apiMaxTokens" type="number" step="1" min="1" placeholder="24576" />
+            </div>
+          </div>
+          <div class="prompt-actions">
+            <button id="saveApi" class="btn-primary" data-i18n="save_api">保存 API 设置</button>
+            <span id="apiSaveStatus" class="save-status"></span>
+          </div>
+          <p class="recommend-note" data-i18n="recommend_note">推荐使用 gemini-3-pro-preview 或更新的系列模型以获得最佳体验。</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

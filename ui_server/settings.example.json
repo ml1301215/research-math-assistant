@@ -1,0 +1,17 @@
+{
+  "api": {
+    "base_url": "https://llm-api-jpe.dou.chat",
+    "model_name": "google/gemini-3-pro-preview",
+    "api_key": "",
+    "temperature": 0.1,
+    "max_tokens": 24576
+  },
+  "prompts": {
+    "step1_prompt": "",
+    "self_improvement_prompt": "",
+    "correction_prompt": "",
+    "verification_system_prompt": "",
+    "verification_remider": "",
+    "check_verification_prompt": ""
+  }
+}
