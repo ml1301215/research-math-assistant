@@ -398,42 +398,50 @@ def get_settings():
 
 @app.post("/settings")
 def post_settings():
-    data = request.get_json(silent=True) or {}
-    current = _load_settings()
+    try:
+        data = request.get_json(silent=True) or {}
+        current = _load_settings()
 
-    if "api" in data:
-        api_data = data["api"] or {}
-        for k in ("base_url", "model_name"):
-            if k in api_data:
-                current["api"][k] = str(api_data[k] or "").strip()
+        if "api" in data:
+            api_data = data["api"] or {}
+            for k in ("base_url", "model_name"):
+                if k in api_data:
+                    current["api"][k] = str(api_data[k] or "").strip()
 
-        if "temperature" in api_data:
-            try:
-                current["api"]["temperature"] = float(api_data["temperature"])
-            except (TypeError, ValueError):
-                pass
+            if "temperature" in api_data:
+                try:
+                    current["api"]["temperature"] = float(api_data["temperature"])
+                except (TypeError, ValueError):
+                    pass
 
-        if "max_tokens" in api_data:
-            try:
-                current["api"]["max_tokens"] = int(api_data["max_tokens"])
-            except (TypeError, ValueError):
-                pass
+            if "max_tokens" in api_data:
+                try:
+                    current["api"]["max_tokens"] = int(api_data["max_tokens"])
+                except (TypeError, ValueError):
+                    pass
 
-        key_mode = str(api_data.get("api_key_mode", "")).strip().lower()
-        if key_mode == "clear":
-            current["api"]["api_key"] = ""
-        elif key_mode == "set":
-            current["api"]["api_key"] = str(api_data.get("api_key", "") or "").strip()
-        elif "api_key" in api_data:
-            current["api"]["api_key"] = str(api_data.get("api_key", "") or "").strip()
+            key_mode = str(api_data.get("api_key_mode", "")).strip().lower()
+            if key_mode == "clear":
+                current["api"]["api_key"] = ""
+            elif key_mode == "set":
+                current["api"]["api_key"] = str(api_data.get("api_key", "") or "").strip()
+            elif "api_key" in api_data:
+                current["api"]["api_key"] = str(api_data.get("api_key", "") or "").strip()
 
-    if "prompts" in data:
-        for k in current["prompts"]:
-            if k in data["prompts"]:
-                current["prompts"][k] = data["prompts"][k]
+        if "prompts" in data:
+            for k in current["prompts"]:
+                if k in data["prompts"]:
+                    current["prompts"][k] = data["prompts"][k]
 
-    _save_settings(current)
-    return jsonify({"ok": True})
+        _save_settings(current)
+        persisted = _load_settings()
+        return jsonify({
+            "ok": True,
+            "has_api_key": bool(persisted.get("api", {}).get("api_key")),
+        })
+    except Exception as e:
+        print(f"[settings] save failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.post("/stop")

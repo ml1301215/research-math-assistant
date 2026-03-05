@@ -602,6 +602,7 @@ document.querySelectorAll(".accordion-toggle").forEach((toggle) => {
 async function loadSettings() {
   try {
     const res = await fetch("/settings");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     defaultPrompts = { ...(data.default_prompts || data.prompts || {}) };
@@ -642,13 +643,18 @@ savePromptsBtn.addEventListener("click", async () => {
   });
 
   try {
-    await fetch("/settings", {
+    const res = await fetch("/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompts }),
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
     flashStatus(promptSaveStatus, "saved");
   } catch (err) {
+    console.error("save prompts error:", err);
     flashStatus(promptSaveStatus, "save_failed");
   }
 });
@@ -687,21 +693,22 @@ saveApiBtn.addEventListener("click", async () => {
   }
 
   try {
-    await fetch("/settings", {
+    const res = await fetch("/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ api }),
     });
-    if (api.api_key_mode === "clear") {
-      hasSavedApiKey = false;
-    } else if (api.api_key_mode === "set") {
-      hasSavedApiKey = true;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${res.status}`);
     }
+    hasSavedApiKey = Boolean(data.has_api_key);
     clearApiKeyEl.checked = false;
     document.getElementById("apiKey").value = "";
     refreshApiKeyHint();
     flashStatus(apiSaveStatus, "saved");
   } catch (err) {
+    console.error("save api settings error:", err);
     flashStatus(apiSaveStatus, "save_failed");
   }
 });
