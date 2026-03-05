@@ -32,6 +32,13 @@ A locally runnable mathematical problem-solving system that uses a single-agent 
 
 ## Quick Start
 
+### 0) Clone the repository
+
+```bash
+git clone https://github.com/ml1301215/research-math-assistant.git
+cd research-math-assistant
+```
+
 ### 1) Install dependencies
 
 ```bash

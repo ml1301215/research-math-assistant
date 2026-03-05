@@ -32,6 +32,13 @@
 
 ## 快速开始
 
+### 0) 克隆仓库
+
+```bash
+git clone https://github.com/ml1301215/research-math-assistant.git
+cd research-math-assistant
+```
+
 ### 1) 安装依赖
 
 ```bash
