@@ -2,7 +2,7 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
-一个本地可运行的数学问题求解系统：使用单 Agent 流程完成「求解 -> 验证 -> 自我修正」，并通过 Web 界面实时查看求解器/验证器对话及最终 LaTeX 输出。
+一个专为数学爱好者开发的数学问题求解系统：使用单 Agent 流程完成「求解 -> 验证 -> 自我修正」，并通过 Web 界面实时查看求解器/验证器对话及最终 LaTeX 输出。
 
 ## 效果展示
 
@@ -94,3 +94,12 @@ python code/agent.py "<problem_file>" --log "<log_file>" --memory "<memory_file>
 - `--memory`：记忆文件路径
 - `--config`：覆盖默认 API/提示词配置
 - `--max_runs`：总运行轮次
+
+## 论文链接
+
+- arXiv: [Can a Lightweight Automated AI Pipeline Solve Research-Level Mathematical Problems?](https://arxiv.org/abs/2602.13695v1)
+
+## 致谢与相关工作
+
+- 衷心感谢 `2025 Lin Yang, Yichen Huang` 的开创性工作，为本项目提供了重要启发与工程基础。
+- 参考项目：[`lyang36/IMO25`](https://github.com/lyang36/IMO25)

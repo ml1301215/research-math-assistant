@@ -2,7 +2,7 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
-A locally runnable mathematical problem-solving system that uses a single-agent loop: "solve -> verify -> self-correct", with a web UI to display solver/verifier interaction and the final LaTeX output in real time.
+A mathematical problem-solving system built for math enthusiasts, using a single-agent loop: "solve -> verify -> self-correct", with a web UI to display solver/verifier interaction and the final LaTeX output in real time.
 
 ## Showcase
 
@@ -94,3 +94,12 @@ Common options:
 - `--memory`: memory file path
 - `--config`: override API/prompt settings
 - `--max_runs`: maximum number of iterations
+
+## Paper Link
+
+- arXiv: [Can a Lightweight Automated AI Pipeline Solve Research-Level Mathematical Problems?](https://arxiv.org/abs/2602.13695v1)
+
+## Acknowledgement and Related Work
+
+- We sincerely thank the pioneering work of `2025 Lin Yang, Yichen Huang`, which provided important inspiration and engineering foundations for this project.
+- Reference project: [`lyang36/IMO25`](https://github.com/lyang36/IMO25)
