@@ -2,6 +2,10 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
+> "In mathematics you don't understand things. You just get used to them."
+>
+> — John von Neumann.
+
 An AI agent system built for math enthusiasts and researchers to solve research-stage mathematical problems, using a lightweight pipeline: solve -> verify -> self-correct.
 
 ```text
