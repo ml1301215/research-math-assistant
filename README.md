@@ -2,7 +2,11 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
-一个专为数学爱好者/数学工作者开发的，用于研究过程中遇到的数学问题求解的 AI Agent 系统，采用轻量化「求解 -> 验证 -> 自我修正」流程。
+> "In mathematics you don't understand things. You just get used to them."
+>
+> — John von Neumann.
+
+一个为数学爱好者/数学工作者开发的，用于学习或研究过程中遇到的数学问题求解的 AI Agent 系统，采用轻量化「求解 -> 验证 -> 自我修正」流程。
 
 ```text
 MIT License
@@ -93,7 +97,7 @@ python ui_server/server.py
 
 ### Web UI（推荐）
 
-1. 输入数学问题（建议 LaTeX）。
+1. 输入数学问题（建议提供完整的问题描述）。
 2. 点击 `Run`。
 3. 实时查看求解器/验证器对话。
 4. 完成后复制最终 LaTeX 输出。
@@ -146,3 +150,5 @@ python code/agent.py "<problem_file>" --log "<log_file>" --memory "<memory_file>
 ## 许可证
 
 MIT License - Copyright (c) 2026 Lve Meng
+
+
