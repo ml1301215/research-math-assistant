@@ -251,6 +251,13 @@ function setStatusText(i18nKey) {
   statusEl.classList.remove("active");
 }
 
+function setStatusErrorReason(reason) {
+  const prefix = currentLang === "zh" ? "启动失败" : "Failed to start";
+  const text = reason ? `${prefix}: ${reason}` : prefix;
+  statusEl.innerHTML = `<span class="status-phase">${text}</span>`;
+  statusEl.classList.remove("active");
+}
+
 function startTimer() {
   startTime = Date.now();
   if (timerInterval) clearInterval(timerInterval);
@@ -464,9 +471,9 @@ async function startRun(question) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (data.error) {
-      setStatusText("status_start_failed");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+      setStatusErrorReason(data.error || `HTTP ${res.status}`);
       stopTimer();
       enterIdleState();
       return;
@@ -475,7 +482,7 @@ async function startRun(question) {
     setStatusAnimated("status_waiting_first", true, true, { total: 0 }, false);
     pollTimer = setInterval(pollLog, 2000);
   } catch (err) {
-    setStatusText("status_start_failed");
+    setStatusErrorReason(err?.message || "");
     stopTimer();
     enterIdleState();
   }

@@ -9,6 +9,7 @@ import sys
 import uuid
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
+from urllib.parse import urlparse
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -22,6 +23,29 @@ AGENT_PATH = PROJECT_ROOT / "code" / "agent.py"
 SETTINGS_FILE = BASE_DIR / "settings.json"
 
 app = Flask(__name__, static_folder=str(BASE_DIR / "static"), static_url_path="")
+
+
+def _validate_api_base_url(raw_url: str) -> str | None:
+    """Return error message when base_url is invalid; otherwise None."""
+    url = str(raw_url or "").strip()
+    if not url:
+        return "API base_url is required."
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return "API base_url is invalid."
+
+    if parsed.scheme not in ("http", "https"):
+        return "API base_url must start with http:// or https://"
+    if not parsed.netloc:
+        return "API base_url must include a valid host."
+
+    host = (parsed.hostname or "").lower()
+    if host == "example.com" or host.endswith(".example.com"):
+        return "API base_url is still a placeholder (example.com). Please set a real API endpoint."
+
+    return None
 
 
 def _is_pid_alive(pid: int) -> bool:
@@ -404,9 +428,16 @@ def post_settings():
 
         if "api" in data:
             api_data = data["api"] or {}
-            for k in ("base_url", "model_name"):
-                if k in api_data:
-                    current["api"][k] = str(api_data[k] or "").strip()
+
+            if "base_url" in api_data:
+                new_base_url = str(api_data.get("base_url") or "").strip()
+                url_error = _validate_api_base_url(new_base_url)
+                if url_error:
+                    return jsonify({"ok": False, "error": url_error}), 400
+                current["api"]["base_url"] = new_base_url
+
+            if "model_name" in api_data:
+                current["api"]["model_name"] = str(api_data.get("model_name") or "").strip()
 
             if "temperature" in api_data:
                 try:
@@ -496,6 +527,10 @@ def run_agent():
     problem_file.write_text(question, encoding="utf-8")
 
     settings = _load_settings()
+    url_error = _validate_api_base_url(settings.get("api", {}).get("base_url", ""))
+    if url_error:
+        return jsonify({"error": url_error}), 400
+
     _write_json(config_file, settings)
 
     cmd = [
