@@ -2,35 +2,11 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
-> "In mathematics you don't understand things. You just get used to them."
+> "There is no royal road to geometry."
 >
-> — John von Neumann.
+> — Euclid, in response to King Ptolemy I, c. 300 BCE
 
-An AI agent system built for math enthusiasts and researchers to solve research-stage mathematical problems, using a lightweight pipeline: solve -> verify -> self-correct.
-
-```text
-MIT License
-
-Copyright (c) 2026 Lve Meng
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+This is an AI agent system for math enthusiasts and researchers, designed to assist with mathematical problems encountered in study or research. It follows a lightweight pipeline: solve -> verify -> self-correct, with a simple and practical Web UI.
 
 ## Overview
 
@@ -43,7 +19,14 @@ This project mainly includes:
 - `ui_server/runs/`: Per-run output directory.
 - `requirements.txt`: Python dependencies.
 
-Validated with Gemini 3 Pro integration, the system can solve mathematical problems that appear in real research workflows.
+With Gemini 3 Pro (or similar reasoning-capable models), the system is designed to:
+
+1. Provide detailed proof ideas for textbook exercises (e.g., GTM series), with references when needed.
+2. Offer reference solutions and references for math problems in engineering practice.
+3. Provide exploratory directions for real research-stage math questions (pending further validation).
+4. Run an automated solve pipeline with only the problem statement as input.
+5. Output complete LaTeX source that can be pasted into Overleaf (or other LaTeX compilers) to build a full PDF.
+
 - arXiv: [Can a Lightweight Automated AI Pipeline Solve Research-Level Mathematical Problems?](https://arxiv.org/abs/2602.13695v1)
 
 ## Showcase
@@ -123,8 +106,8 @@ python code/agent.py "<problem_file>" --log "<log_file>" --memory "<memory_file>
 
 ## Troubleshooting
 
-1. **API key save failed**: check `/settings` response and file write permission.
-2. **No model response**: verify base URL, model name, and API key.
+1. **API Key save failed**: check the `/settings` response and file write permission.
+2. **No model response**: verify Base URL, Model Name, and API Key.
 3. **Long runtime**: hard problems and larger models naturally take longer.
 4. **Empty final LaTeX**: inspect `agent.log` and `stderr.log` in the run directory.
 
@@ -143,9 +126,32 @@ If you use this project in your research, please cite:
 
 ## Acknowledgement and Related Work
 
-- We sincerely thank the work of `2025 Lin Yang, Yichen Huang`. They proposed and demonstrated an efficient Agent-based solve-verify iteration paradigm, which provided key references for the workflow and engineering implementation of this project.
+- We sincerely thank `2025 Lin Yang, Yichen Huang` for their work. They proposed and demonstrated an efficient Agent-based solve-verify iterative paradigm, which provided important references for this project's workflow design and engineering implementation.
 - Reference repository: [`lyang36/IMO25`](https://github.com/lyang36/IMO25)
 
 ## License
 
-MIT License - Copyright (c) 2026 Lve Meng
+
+```text
+MIT License
+
+Copyright (c) 2026 Lve Meng
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
