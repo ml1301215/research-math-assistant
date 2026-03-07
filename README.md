@@ -2,39 +2,29 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
-> "In mathematics you don't understand things. You just get used to them."
+> “在几何学里，没有专为国王铺设的大道”
 >
-> — John von Neumann.
+> — 欧几里得，回答托勒密国王时所言
 
-一个为数学爱好者/数学工作者开发的，用于学习或研究过程中遇到的数学问题求解的自动 AI Agent 系统，采用轻量化「求解 -> 验证 -> 自我修正」流程。
-
-```text
-MIT License
-
-Copyright (c) 2026 Lve Meng
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+这是一个面向数学爱好者与数学研究者的 AI Agent 系统，用于辅助求解学习或研究中遇到的数学问题。系统采用轻量化「求解 -> 验证 -> 自我修正」流程，并提供简洁易用的 Web UI。
 
 ## 项目概述
 
-项目主要包含以下部分：
+适用范围：
+本项目可以帮助你检索相关文献、提供数学问题的理解路径，并辅助数学学习与研究；但它无法替代扎实的数学思考、推导训练与对数学本身的审美体验。
+
+通过调用 Gemini 3 Pro 或其他推理能力相近的模型 API，可以实现：
+
+1. 为数学教材中的练习题（如 GTM 系列）提供详细证明思路，并在必要时附上参考文献。
+2. 为工程场景中的数学问题提供参考解答与参考文献。
+3. 为真实研究过程中的数学问题提供参考思路（待进一步验证）。
+4. 提供自动化求解流程，仅需输入感兴趣的问题描述。
+5. 求解完成后输出完整的 LaTeX 代码，可直接粘贴到 Overleaf 等 LaTeX 编译器生成 PDF，便于阅读与写作。
+
+- arXiv: [Can a Lightweight Automated AI Pipeline Solve Research-Level Mathematical Problems?](https://arxiv.org/abs/2602.13695v1)
+
+
+项目主要包含以下模块：
 
 - `code/agent.py`：核心 Agent 流程（求解、验证、自我修正）。
 - `ui_server/server.py`：Flask 后端（任务运行、日志解析、结果提取、设置持久化）。
@@ -43,8 +33,6 @@ SOFTWARE.
 - `ui_server/runs/`：每次运行的产物目录。
 - `requirements.txt`：Python 依赖。
 
-经过验证，在集成gemini3pro模型后，可以解决真实研究过程中的数学问题。
-- arXiv: [Can a Lightweight Automated AI Pipeline Solve Research-Level Mathematical Problems?](https://arxiv.org/abs/2602.13695v1)
 
 ## 效果展示
 
@@ -123,8 +111,8 @@ python code/agent.py "<problem_file>" --log "<log_file>" --memory "<memory_file>
 
 ## 常见问题
 
-1. **API key 保存失败**：检查 `/settings` 返回和文件写权限。
-2. **模型无响应**：复查 base URL、model name、API key。
+1. **API Key 保存失败**：检查 `/settings` 返回内容与文件写权限。
+2. **模型无响应**：复查 Base URL、Model Name、API Key。
 3. **运行耗时较长**：难题和大模型通常耗时更久。
 4. **最终 LaTeX 为空**：检查对应运行目录下 `agent.log` 与 `stderr.log`。
 
@@ -149,6 +137,27 @@ python code/agent.py "<problem_file>" --log "<log_file>" --memory "<memory_file>
 
 ## 许可证
 
-MIT License - Copyright (c) 2026 Lve Meng
 
+```text
+MIT License
 
+Copyright (c) 2026 Lve Meng
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
